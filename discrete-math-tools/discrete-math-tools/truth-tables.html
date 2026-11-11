@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Truth tables - Discrete Math Tools</title>
+<meta name="description" content="Type a logic or Boolean expression and get its truth table, whether it is a tautology, and whether two expressions are equivalent.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body style="--accent: var(--o-head)">
+<main>
+  <h1>Truth tables</h1>
+  <p class="lede">Type an expression using letters for the variables. The table lists every combination, starting with all true, and says whether the expression is always true, always false, or depends on the inputs.</p>
+  <noscript><p class="msg error">These calculators need JavaScript turned on.</p></noscript>
+
+  <label class="field">
+    <span>Expression</span>
+    <input id="expr" class="text" type="text" value="(P and Q) or not R" autocomplete="off" spellcheck="false">
+  </label>
+  <div class="chips" id="examples" aria-label="Examples"></div>
+
+  <div class="controls">
+    <span class="seg" role="radiogroup" aria-label="Value format">
+      <label><input type="radio" name="fmt" value="TF" checked><span>T / F</span></label>
+      <label><input type="radio" name="fmt" value="10"><span>1 / 0</span></label>
+    </span>
+    <label><input id="subs" type="checkbox" checked> Show the steps (sub-expressions)</label>
+  </div>
+  <p id="msg" class="msg" aria-live="polite"></p>
+  <div id="tableHost"></div>
+
+  <h2>Are two expressions equivalent?</h2>
+  <label class="field">
+    <span>First expression</span>
+    <input id="cmpA" class="text" type="text" value="x + xy" autocomplete="off" spellcheck="false">
+  </label>
+  <label class="field">
+    <span>Second expression</span>
+    <input id="cmpB" class="text" type="text" value="x" autocomplete="off" spellcheck="false">
+  </label>
+  <p id="cmpMsg" class="msg" aria-live="polite"></p>
+  <div id="cmpHost"></div>
+
+  <h2>Laws from my notes</h2>
+  <p class="lede" style="font-size:0.95rem">Boolean algebra shorthand: + is OR, letters side by side are AND, and − in front of a letter is NOT. Press Check to test a law against every combination of inputs.</p>
+  <div class="table-scroll" style="max-height:none">
+    <table class="out tone-o" id="laws">
+      <thead><tr><th>Law</th><th></th><th>Result</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <h2>How to type an expression</h2>
+  <div class="notes" style="--head: var(--o-head)">
+    <p>Both styles work, and you can mix them.</p>
+    <ul>
+      <li>NOT: <code>not P</code>, <code>!P</code>, <code>~P</code>, <code>¬P</code>, or <code>-P</code></li>
+      <li>AND: <code>P and Q</code>, <code>P ^ Q</code>, <code>P * Q</code>, <code>P ∧ Q</code>, or letters side by side like <code>xy</code></li>
+      <li>OR: <code>P or Q</code>, <code>P v Q</code>, <code>P + Q</code>, or <code>P ∨ Q</code></li>
+      <li>XOR: <code>P xor Q</code> or <code>P ⊕ Q</code></li>
+      <li>Implies: <code>P -&gt; Q</code> or <code>P → Q</code></li>
+      <li>If and only if: <code>P &lt;-&gt; Q</code> or <code>P ↔ Q</code></li>
+      <li>Constants: <code>1</code>, <code>0</code>, <code>true</code>, <code>false</code></li>
+    </ul>
+    <p>Order of operations, tightest first: NOT, AND, then OR and XOR, then implies, then if and only if. Use parentheses whenever you want to be sure.</p>
+    <p>Variables are single letters, and an expression can use up to 6 of them (64 rows).</p>
+    <h3>Reading the result</h3>
+    <p>A tautology is true in every row, like P or not P. A contradiction is false in every row, like P and not P. Anything else is contingent, meaning the answer depends on the inputs. Two expressions are equivalent when they give the same answer in every row, and the comparison above shows any rows where they differ.</p>
+  </div>
+</main>
+<footer>Part of <a href="index.html">Discrete Math Tools</a>. Everything runs in your browser.</footer>
+<nav id="tabs"></nav>
+
+<script src="assets/fraction.js"></script>
+<script src="assets/logic.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+(function () {
+  'use strict';
+  var ui = DM.ui, el = ui.el, L = DM.logic;
+  ui.tabs('truth');
+  function $(id) { return document.getElementById(id); }
+  function fmt() { return document.querySelector('input[name="fmt"]:checked').value; }
+  function v(b) { return fmt() === 'TF' ? (b ? 'T' : 'F') : (b ? '1' : '0'); }
+
+  var EXAMPLES = ['P and Q', 'P or Q', 'P -> Q', 'P <-> Q', 'P xor Q', '(P -> Q) <-> (not Q -> not P)', 'P or not P', '(P and Q) or not R'];
+  EXAMPLES.forEach(function (s) {
+    var b = el('button', { type: 'button', class: 'chip', text: s });
+    b.addEventListener('click', function () { $('expr').value = s; run(); });
+    $('examples').appendChild(b);
+  });
+
+  function cell(tag, text, cls) {
+    var c = el(tag, { text: text });
+    if (cls) c.className = cls;
+    return c;
+  }
+
+  function run() {
+    var msg = $('msg'), host = $('tableHost');
+    host.innerHTML = '';
+    try {
+      var t = L.truthTable($('expr').value);
+      var showSteps = $('subs').checked;
+      var cols = t.columns.map(function (c, i) { return { c: c, i: i }; });
+      if (!showSteps) cols = [cols[cols.length - 1]];
+
+      var summary = {
+        tautology: 'A tautology: true in every row.',
+        contradiction: 'A contradiction: false in every row.',
+        contingent: 'Contingent: true in some rows and false in others.'
+      }[t.kind];
+      ui.message(msg, t.kind === 'contingent' ? '' : 'ok', t.text + '  —  ' + summary);
+
+      var head = el('tr');
+      t.vars.forEach(function (name) { head.appendChild(cell('th', name)); });
+      cols.forEach(function (x) { head.appendChild(cell('th', x.c.label)); });
+      var body = el('tbody');
+      t.rows.forEach(function (r) {
+        var tr = el('tr');
+        r.values.forEach(function (b) { tr.appendChild(cell('td', v(b), 'center')); });
+        cols.forEach(function (x, k) {
+          var last = x.i === t.columns.length - 1;
+          var td = cell('td', v(r.cells[x.i]), 'center' + (last ? ' pivot' : ''));
+          tr.appendChild(td);
+        });
+        body.appendChild(tr);
+      });
+      var table = el('table', { class: 'out tone-o' }, el('thead', {}, head), body);
+      host.appendChild(el('div', { class: 'table-scroll' }, table));
+    } catch (e) { ui.message(msg, 'error', e.message); }
+  }
+
+  function compare() {
+    var msg = $('cmpMsg'), host = $('cmpHost');
+    host.innerHTML = '';
+    try {
+      var c = L.compare($('cmpA').value, $('cmpB').value);
+      if (c.equivalent) {
+        ui.message(msg, 'ok', c.textA + ' and ' + c.textB + ' are equivalent: they match in all ' + c.rows.length + ' rows.');
+        return;
+      }
+      ui.message(msg, 'error', c.textA + ' and ' + c.textB + ' are not equivalent. They differ in ' + c.differences.length + ' of ' + c.rows.length + ' rows (shown below).');
+      var head = el('tr');
+      c.vars.forEach(function (name) { head.appendChild(cell('th', name)); });
+      head.appendChild(cell('th', c.textA));
+      head.appendChild(cell('th', c.textB));
+      var body = el('tbody');
+      c.differences.forEach(function (r) {
+        var tr = el('tr');
+        r.values.forEach(function (b) { tr.appendChild(cell('td', v(b), 'center')); });
+        tr.appendChild(cell('td', v(r.a), 'center'));
+        tr.appendChild(cell('td', v(r.b), 'center'));
+        body.appendChild(tr);
+      });
+      host.appendChild(el('div', { class: 'table-scroll' }, el('table', { class: 'out tone-o' }, el('thead', {}, head), body)));
+    } catch (e) { ui.message(msg, 'error', e.message); }
+  }
+
+  // ---------- laws from the notes ----------
+  var LAWS = [
+    ['Complement (OR)', 'x + (-x)', '1'],
+    ['Complement (AND)', 'x*(-x)', '0'],
+    ['Idempotent (OR)', 'x + x', 'x'],
+    ['Idempotent (AND)', 'x*x', 'x'],
+    ['Identity (OR)', 'x + 0', 'x'],
+    ['Domination (OR)', 'x + 1', '1'],
+    ['Absorption', 'x + xy', 'x'],
+    ['Absorption', 'x(x+y)', 'x'],
+    ['Reduction', 'x + x(-y)', 'x'],
+    ['Reduction', 'x(-x) + xy', 'xy']
+  ];
+  var lawBody = document.querySelector('#laws tbody');
+  LAWS.forEach(function (law) {
+    var out = el('td', { class: 'text', text: '' });
+    var btn = el('button', { type: 'button', text: 'Check' });
+    btn.setAttribute('aria-label', 'Check ' + law[1] + ' = ' + law[2]);
+    btn.addEventListener('click', function () {
+      try {
+        var c = L.compare(law[1], law[2]);
+        out.textContent = c.equivalent ? 'True in all ' + c.rows.length + ' cases' : 'Not always true';
+        out.style.color = c.equivalent ? 'var(--ok)' : 'var(--err)';
+      } catch (e) { out.textContent = e.message; out.style.color = 'var(--err)'; }
+    });
+    var law1 = el('td', { class: 'text' }, el('span', { text: law[1].replace(/-/g, '−') + '  =  ' + law[2] }), el('br'), el('small', { text: law[0], style: 'color:var(--muted)' }));
+    lawBody.appendChild(el('tr', {}, law1, el('td', { class: 'center' }, btn), out));
+  });
+
+  ['expr', 'subs'].forEach(function (id) { $(id).addEventListener('input', run); });
+  ['cmpA', 'cmpB'].forEach(function (id) { $(id).addEventListener('input', compare); });
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="fmt"]'), function (r) {
+    r.addEventListener('change', function () { run(); compare(); });
+  });
+  run(); compare();
+})();
+</script>
+</body>
+</html>

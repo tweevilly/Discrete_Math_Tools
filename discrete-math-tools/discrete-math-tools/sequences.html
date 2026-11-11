@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sequences and series - Discrete Math Tools</title>
+<meta name="description" content="Geometric and arithmetic sequences: the nth term, a table of terms, finite sums, and whether the infinite sum converges.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body style="--accent: var(--p-head)">
+<main>
+  <h1>Sequences and series</h1>
+  <p class="lede">Enter the first term and the ratio or difference. You get the nth term, a table of terms, the sum so far, and whether the infinite sum settles on a number.</p>
+  <noscript><p class="msg error">These calculators need JavaScript turned on.</p></noscript>
+
+  <div class="controls">
+    <span class="seg" role="radiogroup" aria-label="Kind of sequence">
+      <label><input type="radio" name="kind" value="geometric" checked><span>Geometric</span></label>
+      <label><input type="radio" name="kind" value="arithmetic"><span>Arithmetic</span></label>
+    </span>
+    <span class="seg" role="radiogroup" aria-label="Number format">
+      <label><input type="radio" name="mode" value="fraction" checked><span>Fractions</span></label>
+      <label><input type="radio" name="mode" value="decimal"><span>Decimals</span></label>
+    </span>
+  </div>
+  <div class="controls">
+    <label>First term <input id="a" class="num" type="text" inputmode="text" value="1" autocomplete="off"></label>
+    <label><span id="stepLabel">Common ratio r</span> <input id="s" class="num" type="text" inputmode="text" value="2" autocomplete="off"></label>
+    <label>First index
+      <select id="start"><option value="0" selected>n = 0</option><option value="1">n = 1</option></select>
+    </label>
+    <label>Last index n <input id="last" type="number" min="0" max="200" value="11"></label>
+  </div>
+  <p id="msg" class="msg" aria-live="polite"></p>
+
+  <ul class="facts" id="facts" style="--head: var(--p-head)"></ul>
+  <p class="formula notes" id="formula" style="--head: var(--p-head)"></p>
+
+  <h2>Terms</h2>
+  <div id="tableHost"></div>
+
+  <h2>Find r or d from two neighbouring terms</h2>
+  <div class="controls">
+    <label>One term <input id="t1" class="num" type="text" value="4" autocomplete="off"></label>
+    <label>The next term <input id="t2" class="num" type="text" value="8" autocomplete="off"></label>
+  </div>
+  <p id="pairMsg" class="msg" aria-live="polite"></p>
+
+  <h2>Notes</h2>
+  <div class="notes" style="--head: var(--p-head)">
+    <p>In a geometric sequence every term is the previous one times a common ratio r. In an arithmetic sequence every term is the previous one plus a common difference d.</p>
+    <p class="formula">geometric: a(n) = a<sub>first</sub> · r<sup>n − first index</sup><br>arithmetic: a(n) = a<sub>first</sub> + d · (n − first index)</p>
+    <p>Adding up N terms, where N = n − first index + 1:</p>
+    <p class="formula">geometric: S = a · (1 − r<sup>N</sup>) / (1 − r), or N · a when r = 1<br>arithmetic: S = N · (first term + last term) / 2</p>
+    <p>An infinite geometric series adds up to a number only when |r| &lt; 1. Then the terms shrink toward 0 and the sum is:</p>
+    <p class="formula">S = a / (1 − r)</p>
+    <p>When |r| ≥ 1 the sum has no finite value, so the tool says it diverges instead of plugging into the formula. The formula would give a meaningless number there, for example −1 for a = 1 and r = 2.</p>
+    <p>Multiplying by (−1)<sup>n</sup> flips the sign of every other term, which is a quick way to make a sequence alternate.</p>
+    <p>The last calculator works backward: two neighbouring terms give r by dividing the second by the first, and d by subtracting the first from the second.</p>
+  </div>
+</main>
+<footer>Part of <a href="index.html">Discrete Math Tools</a>. Everything runs in your browser.</footer>
+<nav id="tabs"></nav>
+
+<script src="assets/fraction.js"></script>
+<script src="assets/sequences.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+(function () {
+  'use strict';
+  var F = DM.Fraction, ui = DM.ui, el = ui.el, SQ = DM.sequences;
+  ui.tabs('sequences');
+  var mode = 'fraction';
+  function $(id) { return document.getElementById(id); }
+  function checked(name) { return document.querySelector('input[name="' + name + '"]:checked').value; }
+  function t(x) { return DM.format(x, mode).replace('-', '−'); }
+  function paren(x) { var s = t(x); return x.isNeg() || !x.isInt() ? '(' + s + ')' : s; }
+  function field(id, label) {
+    var raw = $(id).value;
+    try { return F.parse(raw); }
+    catch (e) { throw new Error(label + ': "' + raw.trim() + '" ' + e.message + '.'); }
+  }
+
+  function run() {
+    var msg = $('msg'), facts = $('facts');
+    facts.innerHTML = ''; $('tableHost').innerHTML = ''; $('formula').textContent = '';
+    try {
+      var kind = checked('kind'), geo = kind === 'geometric';
+      var stepName = geo ? 'Common ratio r' : 'Common difference d';
+      $('stepLabel').textContent = stepName;
+      var start = parseInt($('start').value, 10);
+      var last = ui.num($('last'), 0, 200, 11);
+      var seq = { kind: kind, first: field('a', 'First term'), step: field('s', stepName), start: start };
+      if (last < start) throw new Error('The last index n must be at least ' + start + '.');
+      ui.message(msg, '', '');
+
+      var count = last - start + 1;
+      var value = SQ.term(seq, last), sum = SQ.partialSum(seq, last);
+      facts.appendChild(el('li', {}, 'a(' + last + ') = ', el('b', { text: t(value) })));
+      facts.appendChild(el('li', {}, 'Sum of the ' + count + ' term' + (count === 1 ? '' : 's') + ' from n = ' + start + ' to n = ' + last + ': ', el('b', { text: t(sum) })));
+      var b = SQ.behavior(seq);
+      facts.appendChild(el('li', {}, 'As n grows, the terms approach: ', el('b', { text: b.termsApproach.replace('-', '−') })));
+      facts.appendChild(el('li', {}, 'Infinite sum: ', el('b', { text: b.sumConverges ? t(b.sum) : 'diverges' }), ' (' + b.why + ')'));
+
+      $('formula').textContent = geo
+        ? 'a(n) = ' + paren(seq.first) + ' · ' + paren(seq.step) + '^(n − ' + start + ')'
+        : 'a(n) = ' + paren(seq.first) + ' + ' + paren(seq.step) + ' · (n − ' + start + ')';
+
+      var thead = el('thead', {}, el('tr', {}, el('th', { text: 'n' }), el('th', { text: 'a(n)' }), el('th', { text: 'Sum so far' })));
+      var tbody = el('tbody'), running = new F(0);
+      SQ.terms(seq, last).forEach(function (row) {
+        running = running.add(row.value);
+        tbody.appendChild(el('tr', {},
+          el('td', { class: 'center', text: String(row.n) }),
+          el('td', { text: t(row.value), title: row.value.toString() }),
+          el('td', { text: t(running), title: running.toString() })));
+      });
+      var table = el('table', { class: 'out tone-p' }, thead, tbody);
+      $('tableHost').appendChild(el('div', { class: 'table-scroll' }, table));
+    } catch (e) { ui.message(msg, 'error', e.message); }
+  }
+
+  function pair() {
+    var msg = $('pairMsg');
+    try {
+      var a = field('t1', 'One term'), b = field('t2', 'The next term');
+      var r = SQ.fromConsecutive(a, b);
+      var d = 'Common difference d = ' + t(b).replace('-', '−') + ' − ' + paren(a) + ' = ' + t(r.difference) + '.';
+      var q = r.ratio ? 'Common ratio r = ' + t(b) + ' ÷ ' + paren(a) + ' = ' + t(r.ratio) + '.  ' : 'Common ratio r is undefined because the first term is 0.  ';
+      ui.message(msg, 'ok', q.replace('-', '−') + d);
+    } catch (e) { ui.message(msg, 'error', e.message); }
+  }
+
+  ['a', 's', 'last'].forEach(function (id) { $(id).addEventListener('input', run); });
+  $('start').addEventListener('change', run);
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="kind"]'), function (r) {
+    r.addEventListener('change', function () {
+      // swap to a sensible default step when the kind changes and the field still holds the other default
+      if (r.value === 'arithmetic' && $('s').value === '2') $('s').value = '3';
+      if (r.value === 'geometric' && $('s').value === '3') $('s').value = '2';
+      run();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="mode"]'), function (r) {
+    r.addEventListener('change', function () { mode = r.value; run(); pair(); });
+  });
+  ['t1', 't2'].forEach(function (id) { $(id).addEventListener('input', pair); });
+  run(); pair();
+})();
+</script>
+</body>
+</html>
