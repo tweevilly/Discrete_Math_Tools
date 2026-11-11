@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Matrices - Discrete Math Tools</title>
+<meta name="description" content="Multiply matrices and find the determinant and inverse of a square matrix, with exact fractions.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body style="--accent: var(--a-head)">
+<main>
+  <h1>Matrices</h1>
+  <p class="lede">Multiply two matrices, or find the determinant and inverse of a square one. Answers stay exact, so 1/3 never turns into 0.333.</p>
+
+  <div class="controls">
+    <span class="seg" role="radiogroup" aria-label="Number format">
+      <label><input type="radio" name="mode" value="fraction" checked><span>Fractions</span></label>
+      <label><input type="radio" name="mode" value="decimal"><span>Decimals</span></label>
+    </span>
+  </div>
+  <noscript><p class="msg error">These calculators need JavaScript turned on.</p></noscript>
+
+  <h2>Multiply A × B</h2>
+  <div class="controls">
+    <label>A has <input id="m" type="number" min="1" max="6" value="2" aria-label="Rows in A"> rows and <input id="n" type="number" min="1" max="6" value="3" aria-label="Columns in A"> columns</label>
+    <label>B has <b id="bRows">3</b> rows and <input id="p" type="number" min="1" max="6" value="2" aria-label="Columns in B"> columns</label>
+  </div>
+  <p class="lede" style="font-size:0.95rem">Type in the cells, move with the arrow keys, or paste a block of cells copied from Excel. Blank cells count as 0.</p>
+  <div class="row" id="mulRow"></div>
+  <p id="mulMsg" class="msg" aria-live="polite"></p>
+
+  <h2>Determinant and inverse</h2>
+  <div class="controls">
+    <label>Matrix size <input id="sq" type="number" min="1" max="6" value="2" aria-label="Size of the square matrix"> rows and columns</label>
+  </div>
+  <div class="row" id="invRow"></div>
+  <p id="invMsg" class="msg" aria-live="polite"></p>
+  <ul class="facts" id="invFacts" style="--head: var(--o-head)"></ul>
+
+  <h2>Notes</h2>
+  <div class="notes" style="--head: var(--a-head)">
+    <p>A matrix with m rows and n columns can be multiplied by one with n rows and p columns. The answer has m rows and p columns. The inner sizes have to match.</p>
+    <p class="formula">(AB)<sub>ij</sub> = a<sub>i1</sub>b<sub>1j</sub> + a<sub>i2</sub>b<sub>2j</sub> + … + a<sub>in</sub>b<sub>nj</sub></p>
+    <p>Each entry of the answer is a row of A multiplied term by term with a column of B, then added up. The line under the first calculator spells out the first entry.</p>
+    <p>For a 2 × 2 matrix with entries a, b in the top row and c, d in the bottom row:</p>
+    <p class="formula">det A = ad − bc &nbsp;&nbsp; A<sup>−1</sup> = 1/(ad − bc) · [ d  −b ; −c  a ]</p>
+    <p>If det A = 0, the matrix has no inverse. For larger sizes, the tool finds the inverse by row reducing A next to the identity matrix (Gauss–Jordan), and it checks the answer by multiplying A by A<sup>−1</sup> to get the identity back.</p>
+  </div>
+</main>
+<footer>Part of <a href="index.html">Discrete Math Tools</a>. Everything runs in your browser.</footer>
+<nav id="tabs"></nav>
+
+<script src="assets/fraction.js"></script>
+<script src="assets/matrices.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+(function () {
+  'use strict';
+  var F = DM.Fraction, ui = DM.ui, el = ui.el, MX = DM.matrix;
+  ui.tabs('matrices');
+  var mode = 'fraction';
+  function $(id) { return document.getElementById(id); }
+  function txt(x) { return DM.format(x, mode).replace('-', '−'); }
+
+  // ---------- multiply ----------
+  var aHost = el('div'), bHost = el('div');
+  var A = ui.grid(aHost, { label: 'Matrix A', rows: 2, cols: 3, tone: 'a', maxRows: 6, maxCols: 6, values: [[1, 3, -3], [3, 0, 5]], onChange: multiply });
+  var B = ui.grid(bHost, { label: 'Matrix B', rows: 3, cols: 2, tone: 'b', maxRows: 6, maxCols: 6, values: [[3, 0], [-3, 1], [0, 5]], onChange: multiply });
+  var resHost = el('div');
+  $('mulRow').append(ui.block('Matrix A', 'a', aHost), el('span', { class: 'op', text: '×' }), ui.block('Matrix B', 'b', bHost), el('span', { class: 'op', text: '=' }), resHost);
+
+  function size(id, fallback) { return ui.num($(id), 1, 6, fallback); }
+  function resize() {
+    var m = size('m', 2), n = size('n', 3), p = size('p', 2);
+    $('bRows').textContent = n;
+    A.resize(m, n); B.resize(n, p); multiply();
+  }
+  ['m', 'n', 'p'].forEach(function (id) { $(id).addEventListener('input', resize); });
+
+  function multiply() {
+    var msg = $('mulMsg');
+    resHost.innerHTML = '';
+    try {
+      var a = A.parse(), b = B.parse(), c = MX.multiply(a, b);
+      resHost.appendChild(ui.block('A × B (' + c.length + ' × ' + c[0].length + ')', 'r', ui.matrixTable(c, { mode: mode, tone: 'r' })));
+      var terms = a[0].map(function (x, k) { return '(' + x.toString().replace('-', '−') + ')·(' + b[k][0].toString().replace('-', '−') + ')'; });
+      ui.message(msg, 'ok', 'Entry in row 1, column 1: ' + terms.join(' + ') + ' = ' + c[0][0].toString().replace('-', '−') + '.');
+    } catch (e) { ui.message(msg, 'error', e.message); }
+  }
+
+  // ---------- determinant and inverse ----------
+  var sHost = el('div');
+  var S = ui.grid(sHost, { label: 'Square matrix', rows: 2, cols: 2, tone: 'o', maxRows: 6, maxCols: 6, values: [[-5, 7], [3, -4]], onChange: inverse });
+  var invHost = el('div');
+  $('invRow').append(ui.block('Square matrix A', 'o', sHost), el('span', { class: 'op', text: '→' }), invHost);
+
+  $('sq').addEventListener('input', function () { var n = size('sq', 2); S.resize(n, n); inverse(); });
+
+  function inverse() {
+    var msg = $('invMsg'), facts = $('invFacts');
+    invHost.innerHTML = ''; facts.innerHTML = '';
+    try {
+      var a = S.parse(), det = MX.determinant(a);
+      facts.appendChild(el('li', {}, 'det A = ', el('b', { text: txt(det) })));
+      var inv = MX.inverse(a);
+      if (!inv) {
+        ui.message(msg, '', 'det A = 0, so A has no inverse.');
+        return;
+      }
+      invHost.appendChild(ui.block('A⁻¹ (inverse)', 'r', ui.matrixTable(inv, { mode: mode, tone: 'r' })));
+      var ok = MX.equals(MX.multiply(a, inv), MX.identity(a.length));
+      ui.message(msg, ok ? 'ok' : 'error', ok ? 'Check: A × A⁻¹ gives the identity matrix.' : 'Check failed: A × A⁻¹ is not the identity.');
+    } catch (e) { ui.message(msg, 'error', e.message); }
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="mode"]'), function (r) {
+    r.addEventListener('change', function () { mode = r.value; multiply(); inverse(); });
+  });
+  multiply(); inverse();
+})();
+</script>
+</body>
+</html>

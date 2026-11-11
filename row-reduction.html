@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Row reduction - Discrete Math Tools</title>
+<meta name="description" content="Row reduce a matrix or solve a system of linear equations, with echelon form, reduced echelon form, and every row operation listed.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body style="--accent: var(--u-head)">
+<main>
+  <h1>Row reduction</h1>
+  <p class="lede">Enter a matrix, or the coefficients of a system of equations. You get echelon form, reduced echelon form, the rank, the solution, and every row operation along the way.</p>
+  <noscript><p class="msg error">These calculators need JavaScript turned on.</p></noscript>
+
+  <div class="controls">
+    <label><input id="rows" type="number" min="1" max="6" value="3" aria-label="Number of rows"> rows</label>
+    <label><input id="cols" type="number" min="1" max="7" value="4" aria-label="Number of columns"> columns</label>
+    <label><input id="aug" type="checkbox" checked> Last column is the right-hand side of a system</label>
+    <span class="seg" role="radiogroup" aria-label="Number format">
+      <label><input type="radio" name="mode" value="fraction" checked><span>Fractions</span></label>
+      <label><input type="radio" name="mode" value="decimal"><span>Decimals</span></label>
+    </span>
+  </div>
+  <p class="lede" style="font-size:0.95rem">The default is x₁ + x₂ + x₃ = 6, 2x₁ − x₂ + x₃ = 3, x₁ + 2x₂ − x₃ = 2. Type in the cells, move with the arrow keys, or paste a block of cells copied from Excel. Blank cells count as 0.</p>
+
+  <div class="row" id="inRow"></div>
+  <p id="msg" class="msg" aria-live="polite"></p>
+
+  <div id="results"></div>
+
+  <h2>Notes</h2>
+  <div class="notes" style="--head: var(--u-head)">
+    <p>Row reduction uses three moves that never change the solutions of a system: swap two rows, multiply a row by a number other than 0, and add a multiple of one row to another.</p>
+    <p>The forward phase builds echelon form. Working left to right, it picks a pivot in each column, scales that row so the pivot is 1, and clears every entry below it. The backward phase works from the bottom pivot upward, clearing the entries above each pivot, which gives reduced echelon form.</p>
+    <p>The rank is the number of pivots. For a system with n unknowns:</p>
+    <ul>
+      <li>If the right-hand column holds a pivot (a row like 0 0 0 | 1), the system has no solution.</li>
+      <li>If every unknown has a pivot, the solution is unique.</li>
+      <li>Otherwise the unknowns without a pivot are free, and the system has infinitely many solutions.</li>
+    </ul>
+    <p>Row operations are written like R2 ← R2 − 3·R1, which reads "replace row 2 with row 2 minus 3 times row 1", and R1 ↔ R2 for a swap.</p>
+  </div>
+</main>
+<footer>Part of <a href="index.html">Discrete Math Tools</a>. Everything runs in your browser.</footer>
+<nav id="tabs"></nav>
+
+<script src="assets/fraction.js"></script>
+<script src="assets/rref.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+(function () {
+  'use strict';
+  var ui = DM.ui, el = ui.el;
+  ui.tabs('rref');
+  var mode = 'fraction';
+  function $(id) { return document.getElementById(id); }
+
+  var host = el('div');
+  var G = ui.grid(host, {
+    label: 'Matrix', rows: 3, cols: 4, tone: 'u', maxRows: 6, maxCols: 7,
+    values: [[1, 1, 1, 6], [2, -1, 1, 3], [1, 2, -1, 2]], onChange: run
+  });
+  $('inRow').appendChild(ui.block('Matrix', 'u', host));
+
+  function resize() {
+    G.resize(ui.num($('rows'), 1, 6, 3), ui.num($('cols'), 1, 7, 4));
+    run();
+  }
+  ['rows', 'cols'].forEach(function (id) { $(id).addEventListener('input', resize); });
+  $('aug').addEventListener('change', run);
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="mode"]'), function (r) {
+    r.addEventListener('change', function () { mode = r.value; run(); });
+  });
+
+  function pivotCells(pivots) { return pivots.map(function (p) { return [p[0], p[1]]; }); }
+
+  function run() {
+    var msg = $('msg'), out = $('results');
+    out.innerHTML = '';
+    try {
+      var M = G.parse();
+      var augmented = $('aug').checked;
+      if (augmented && M[0].length < 2) throw new Error('A system needs at least 2 columns: the unknowns, then the right-hand side. Turn off the checkbox to reduce a plain matrix.');
+      var r = DM.rref.reduce(M, augmented);
+      ui.message(msg, '', '');
+
+      var row = el('div', { class: 'row' });
+      row.appendChild(ui.block('Echelon form', 'u', ui.matrixTable(r.echelon, { mode: mode, tone: 'u', highlight: pivotCells(r.pivots) })));
+      row.appendChild(el('span', { class: 'op', text: '→' }));
+      row.appendChild(ui.block('Reduced echelon form', 'r', ui.matrixTable(r.rref, { mode: mode, tone: 'r', highlight: pivotCells(r.pivots) })));
+      out.appendChild(el('h2', { text: 'Result' }));
+      out.appendChild(row);
+
+      var facts = el('ul', { class: 'facts', style: '--head: var(--u-head)' });
+      facts.appendChild(el('li', {}, 'Rank: ', el('b', { text: String(r.rank) }), '. Pivots are outlined in the tables.'));
+      out.appendChild(facts);
+
+      if (r.solution) {
+        var label = { unique: 'Exactly one solution', none: 'No solution', infinite: 'Infinitely many solutions' }[r.solution.status];
+        out.appendChild(el('h2', { text: 'Solution' }));
+        var list = el('ul', { class: 'facts', style: '--head: var(--r-head)' });
+        list.appendChild(el('li', {}, el('b', { text: label })));
+        r.solution.lines.forEach(function (l) { list.appendChild(el('li', { text: l.replace(/-/g, '−') })); });
+        out.appendChild(list);
+      }
+
+      var det = el('details');
+      det.appendChild(el('summary', { text: 'Show every row operation (' + r.steps.length + ')' }));
+      var ol = el('ol', { class: 'steps' });
+      var phaseName = { forward: 'Forward', backward: 'Backward' };
+      r.steps.forEach(function (s) {
+        var li = el('li');
+        li.appendChild(el('span', { class: 'desc', text: (phaseName[s.phase] ? phaseName[s.phase] + ': ' : '') + s.desc.replace(/-/g, '\u2212') }));
+        li.appendChild(el('div', { class: 'scroll' }, ui.matrixTable(s.matrix, { mode: mode, tone: 'n' })));
+        ol.appendChild(li);
+      });
+      det.appendChild(ol);
+      out.appendChild(det);
+    } catch (e) { ui.message(msg, 'error', e.message); }
+  }
+  run();
+})();
+</script>
+</body>
+</html>
