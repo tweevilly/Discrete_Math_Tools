@@ -2,7 +2,7 @@
 
 Four small calculators built from the Excel sheets I made for my WGU discrete mathematics coursework. Each page shows its work and has short notes underneath.
 
-**Live site:** https://tweevilly.github.io/discrete-math-tools/
+**Live site:** https://tweevilly.github.io/Discrete_Math_Tools/
 
 | Page | What it does |
 | --- | --- |
@@ -34,10 +34,10 @@ node --test
 
 ## Publish it with GitHub Pages
 
-1. Push this folder to a repository named `discrete-math-tools`.
+1. Push this folder to a repository named `Discrete_Math_Tools`.
 2. In the repository, go to Settings, then Pages.
 3. Under "Build and deployment", choose "Deploy from a branch", pick `main` and `/ (root)`, and save.
-4. After a minute the site is live at `https://<your-username>.github.io/discrete-math-tools/`.
+4. After a minute the site is live at `https://<your-username>.github.io/Discrete_Math_Tools/`.
 
 ## Layout
 
