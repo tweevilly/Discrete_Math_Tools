@@ -1,6 +1,6 @@
 # Discrete Math Tools
 
-Four small calculators built from the Excel sheets I made for my WGU discrete mathematics coursework. Each page shows its work and has short notes underneath.
+Four small calculators built from the Excel sheets I made for my WGU C959: Discrete Mathematics coursework. Each page shows its work and has short notes underneath.
 
 **Live site:** https://tweevilly.github.io/Discrete_Math_Tools/
 
@@ -57,4 +57,4 @@ tests/    math.test.js
 
 ## Credit
 
-Coursework: WGU discrete mathematics. The notes and spreadsheets these tools replace are my own.
+Coursework: WGU C959: Discrete Mathematics. The notes and spreadsheets these tools replace are my own.
