@@ -11,8 +11,14 @@ Four small calculators built from the Excel sheets I made for my WGU discrete ma
 | [Truth tables](truth-tables.html) | Truth table for a logic or Boolean expression, tautology check, and equivalence of two expressions. |
 | [Row reduction](row-reduction.html) | Echelon and reduced echelon form, rank, the solution of a linear system, and every row operation. |
 
-![Matrices page](screenshots/matrices.jpg)
-![Truth tables page](screenshots/truth-tables.jpg)
+<p>
+  <img src="screenshots/matrices.jpg" alt="Matrices page" width="48%">
+  <img src="screenshots/sequences.jpg" alt="Sequences page" width="48%">
+</p>
+<p>
+  <img src="screenshots/truth-tables.jpg" alt="Truth tables page" width="48%">
+  <img src="screenshots/row-reduction.jpg" alt="Row reduction page" width="48%">
+</p>
 
 ## Features
 
